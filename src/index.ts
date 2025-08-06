@@ -234,43 +234,41 @@ export type Expr =
   | { kind: 'Lit'; value: boolean };
 
 /**
+ * Maps expression kinds to their corresponding inference results.
+ */
+type InferTypeMap<E extends Expr, Env extends TypeEnv> = {
+  'Var': E extends { kind: 'Var'; name: infer N extends string }
+    ? N extends keyof Env
+      ? [Instantiate<Env[N]>, typeof EmptySubst]
+      : never
+    : never;
+  'Abs': E extends { kind: 'Abs'; param: infer P extends string; body: infer B extends Expr }
+    ? InferAbs<P, B, Env>
+    : never;
+  'App': E extends { kind: 'App'; fun: infer F extends Expr; arg: infer A extends Expr }
+    ? InferApp<F, A, Env>
+    : never;
+  'Let': E extends { kind: 'Let'; name: infer N extends string; value: infer V extends Expr; body: infer B extends Expr }
+    ? InferLet<N, V, B, Env>
+    : never;
+  'Lit': E extends { kind: 'Lit'; value: infer V }
+    ? V extends number
+      ? [IntType, typeof EmptySubst]
+      : V extends boolean
+        ? [BoolType, typeof EmptySubst]
+        : never
+    : never;
+};
+
+/**
  * Implements Algorithm W for type inference, returning a tuple:
  * [inferred TypeAST, accumulated Substitution]
  */
 export type InferType<
   E extends Expr,
   Env extends TypeEnv = Record<string, never>
-> =
-  E extends { kind: 'Var'; name: infer N }
-    ? N extends keyof Env
-      ? [Instantiate<Env[N]>, typeof EmptySubst]
-      : never
-  : E extends { kind: 'Abs'; param: infer P; body: infer B }
-    ? P extends string
-      ? B extends Expr
-        ? InferAbs<P, B, Env>
-        : never
-      : never
-  : E extends { kind: 'App'; fun: infer F; arg: infer A }
-    ? F extends Expr
-      ? A extends Expr
-        ? InferApp<F, A, Env>
-        : never
-      : never
-  : E extends { kind: 'Let'; name: infer N; value: infer V; body: infer B }
-    ? N extends string
-      ? V extends Expr
-        ? B extends Expr
-          ? InferLet<N, V, B, Env>
-          : never
-        : never
-      : never
-  : E extends { kind: 'Lit'; value: infer V }
-    ? V extends number
-      ? [IntType, typeof EmptySubst]
-      : V extends boolean
-        ? [BoolType, typeof EmptySubst]
-        : never
+> = E extends { kind: infer K extends keyof InferTypeMap<E, Env> }
+  ? InferTypeMap<E, Env>[K]
   : never;
 
 /**
