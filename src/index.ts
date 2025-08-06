@@ -234,6 +234,17 @@ export type Expr =
   | { kind: 'Lit'; value: boolean };
 
 /**
+ * Implements Algorithm W for type inference, returning a tuple:
+ * [inferred TypeAST, accumulated Substitution]
+ */
+export type InferType<
+  E extends Expr,
+  Env extends TypeEnv = Record<string, never>
+> = E extends { kind: infer K extends keyof InferTypeMap<E, Env> }
+  ? InferTypeMap<E, Env>[K]
+  : never;
+
+/**
  * Maps expression kinds to their corresponding inference results.
  */
 type InferTypeMap<E extends Expr, Env extends TypeEnv> = {
@@ -259,17 +270,6 @@ type InferTypeMap<E extends Expr, Env extends TypeEnv> = {
         : never
     : never;
 };
-
-/**
- * Implements Algorithm W for type inference, returning a tuple:
- * [inferred TypeAST, accumulated Substitution]
- */
-export type InferType<
-  E extends Expr,
-  Env extends TypeEnv = Record<string, never>
-> = E extends { kind: infer K extends keyof InferTypeMap<E, Env> }
-  ? InferTypeMap<E, Env>[K]
-  : never;
 
 /**
  * Applies a substitution to every TypeScheme in the environment.
