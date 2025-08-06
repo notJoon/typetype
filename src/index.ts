@@ -1,32 +1,71 @@
+/**
+ * Represents a type variable (e.g., α, β) in the type AST.
+ * @template Name - The name of the type variable.
+ * @remarks
+ * Type variables are placeholders for unknown types during inference.
+ */
 export type TypeVar<Name extends string> = {
   kind: 'TypeVar';
   name: Name;
 };
 
+/**
+ * Represents a type constructor (e.g., Int, Bool, List) in the type AST.
+ * @template Name - The name of the type constructor.
+ * @remarks
+ * Type constructors define concrete or parameterized types in the language.
+ */
 export type TypeCon<Name extends string> = {
   kind: 'TypeCon';
   name: Name;
 };
 
+/**
+ * Represents application of one type to another (type-level function application).
+ * @typeparam Fun - The function/type being applied.
+ * @typeparam Arg - The argument type.
+ * @remarks
+ * Used to construct function types and parameterized types like List<T>.
+ */
 export type TypeApp<Fun, Arg> = {
   kind: 'TypeApp';
   fun: Fun;
   arg: Arg;
 };
 
+/**
+ * Union of all type AST node kinds: variables, constructors, and applications.
+ * @template Name - Type variable and constructor names.
+ */
 export type TypeAST<Name extends string = string> =
   | TypeVar<Name>
   | TypeCon<Name>
   | TypeApp<any, any>;
 
+/**
+ * Helper for building function types (From -> To) as nested TypeApp nodes.
+ * @typeparam From - The argument type.
+ * @typeparam To - The return type.
+ */
 export type FunType<From, To> =
   TypeApp<TypeApp<TypeCon<'->'>, From>, To>;
 
 export type IntType = TypeCon<'Int'>;
 export type BoolType = TypeCon<'Bool'>;
+
+/**
+ * Constructs a list type applied to element type T (List<T>).
+ * @typeparam T - Element type of the list.
+ */
 export type ListType<T> = TypeApp<TypeCon<'List'>, T>;
 
-// Polymorphic Type Scheme (∀α.τ)
+/**
+ * Represents a polymorphic type scheme (∀α. τ).
+ * @template Vars - Array of bound type variable names.
+ * @template T - The underlying monomorphic type AST.
+ * @remarks
+ * Captures the idea of universal quantification over type variables.
+ */
 export type TypeScheme<
   Vars extends readonly string[],
   T
@@ -36,16 +75,32 @@ export type TypeScheme<
   type: T;
 };
 
-// Environment and Substitutions
+/**
+ * Type environment mapping variable names to their polymorphic TypeSchemes.
+ * 
+ * @todo Remove any
+ */
 export type TypeEnv =
   Record<string, TypeScheme<string[], any>>;
 
+/**
+ * Substitution mapping from type variable names to concrete types.
+ * @template Name - Names of type variables being substituted.
+ * @remarks
+ * Used during unification to record type equalities.
+ * 
+ * @todo Remove any
+ */
 export type Substitution<Name extends string = string> =
   Record<Name, any>;
 
 export const EmptySubst: Substitution<string> = {} as Substitution<string>;
 
-// Apply and Compose Substitutions
+/**
+ * Applies a substitution to a type AST, replacing variables as needed.
+ * @template S - The substitution to apply.
+ * @template T - The type AST to transform.
+ */
 export type ApplySubst<
   S extends Substitution<Name>,
   T,
@@ -61,6 +116,11 @@ export type ApplySubst<
     ? TypeCon<C>
   : never;
 
+/**
+ * Composes two substitutions S1 and S2, applying S2 to results of S1.
+ * @template S1 - First substitution.
+ * @template S2 - Second substitution.
+ */
 export type ComposeSubst<
   S1 extends Substitution<Name>,
   S2 extends Substitution<Name>,
@@ -74,7 +134,11 @@ export type ComposeSubst<
         : never;
 };
 
-// Free Type Variables
+/**
+ * Computes free type variables present in a type AST.
+ * @template T - The type AST to inspect.
+ * @returns Union of variable names.
+ */
 export type FreeTypeVars<T> =
   T extends TypeVar<infer V>
     ? V
@@ -82,7 +146,12 @@ export type FreeTypeVars<T> =
       ? FreeTypeVars<F> | FreeTypeVars<A>
       : never;
 
-// Generalization and Instantiation
+/**
+ * Generalizes a monomorphic type T over the environment Env,
+ * producing a polymorphic TypeScheme that quantifies over free vars.
+ * @template Env - The type environment.
+ * @template T - The type to generalize.
+ */
 export type Generalize<
   Env extends TypeEnv,
   T
@@ -94,6 +163,10 @@ export type Generalize<
   T
 >;
 
+/**
+ * Creates a fresh substitution mapping each variable in Vars to a new TypeVar
+ * prefixed with "fresh_".
+ */
 export type CreateFreshSubst<
   Vars extends readonly unknown[]
 > = Vars extends [infer H, ...infer R]
@@ -102,12 +175,17 @@ export type CreateFreshSubst<
     : CreateFreshSubst<R>
   : Record<string, never>;
 
+/**
+ * Instantiates a polymorphic TypeScheme by replacing bound vars with fresh ones.
+ */
 export type Instantiate<S> = 
   S extends TypeScheme<infer Vars, infer T>
     ? ApplySubst<CreateFreshSubst<Vars>, T>
     : never;
 
-// Unification
+/**
+ * Entry point for type unification, yielding a substitution or never on failure.
+ */
 export type Unify<
   T1,
   T2,
@@ -144,7 +222,9 @@ export type UnifyHelper<
       : never
   : never;
 
-// Expressions and Type Inference
+/**
+ * AST for expressions in the mini-language.
+ */
 export type Expr =
   | { kind: 'Var'; name: string }
   | { kind: 'Abs'; param: string; body: Expr }
@@ -153,6 +233,10 @@ export type Expr =
   | { kind: 'Lit'; value: number }
   | { kind: 'Lit'; value: boolean };
 
+/**
+ * Implements Algorithm W for type inference, returning a tuple:
+ * [inferred TypeAST, accumulated Substitution]
+ */
 export type InferType<
   E extends Expr,
   Env extends TypeEnv = Record<string, never>
@@ -189,7 +273,9 @@ export type InferType<
         : never
   : never;
 
-// 10. Helpers for Inference
+/**
+ * Applies a substitution to every TypeScheme in the environment.
+ */
 export type ApplySubstToEnv<
   S extends Substitution<Name>,
   Env extends TypeEnv,
@@ -200,6 +286,10 @@ export type ApplySubstToEnv<
     : never;
 };
 
+/**
+ * Infers the type of a lambda abstraction, extending the environment with
+ * a fresh type variable for the parameter.
+ */
 export type InferAbs<
   P extends string,
   B extends Expr,
@@ -211,6 +301,10 @@ export type InferAbs<
     ? [FunType<TypeVar<`α${P}`>, BodyType>, S]
     : never;
 
+/**
+ * Infers the type of a function application by inferring both sides,
+ * unifying the function type with an arrow type, and composing substitutions.
+ */
 export type InferApp<
   F extends Expr,
   A extends Expr,
@@ -226,6 +320,10 @@ export type InferApp<
       : never
     : never;
 
+/**
+ * Infers let-expressions by inferring the bound value,
+ * generalizing its type, and inferring the body in extended env.
+ */
 export type InferLet<
   N extends string,
   V extends Expr,
