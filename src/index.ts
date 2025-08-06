@@ -21,9 +21,9 @@ export type TypeApp<Fun, Arg> = {
 export type FunType<From, To> = TypeApp<TypeApp<TypeCon<'->'>, From>, To>;
 
 // Basic types
-type IntType = TypeCon<'Int'>;
-type BoolType = TypeCon<'Bool'>;
-type ListType<T> = TypeApp<TypeCon<'List'>, T>;
+export type IntType = TypeCon<'Int'>;
+export type BoolType = TypeCon<'Bool'>;
+export type ListType<T> = TypeApp<TypeCon<'List'>, T>;
 
 // Type schemes (∀α.τ) - Polymorphic Types
 type TypeScheme<Vars extends readonly string[], Type> = {
@@ -166,7 +166,7 @@ type ApplySubstToEnv<S extends Substitution, Env extends TypeEnv> = {
     [K in keyof Env]: ApplySubst<S, Env[K]>
 }
 
-type Expr = 
+export type Expr = 
   | { kind: 'Var', name: string }
   | { kind: 'Abs', param: string, body: Expr }
   | { kind: 'App', fun: Expr, arg: Expr }
