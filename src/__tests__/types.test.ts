@@ -1,10 +1,8 @@
 import { describe, test, expect } from '@jest/globals';
-import { EmptySubst, TypeCon, TypeVar, InferType, Unify } from '../index';
+import { TypeCon, TypeVar, InferType, Unify, EmptySubst } from '../index';
 
 type Equal<X, Y> =
-  (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2
-    ? true
-    : false;
+  (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2 ? true : false;
 
 const expectType = <T>() => ({
   toEqual: <U>(_?: Equal<T, U> extends true ? true : never): true => true,
@@ -16,11 +14,11 @@ describe('TypeType - InferType Function Tests', () => {
   describe('Variable Expressions', () => {
     test('should infer type for bound variable', () => {
       // Test if variable type is correctly inferred from environment
-      type TestEnv = { x: TypeCon<'Int'> };
+      type TestEnv = { x: { kind: 'TypeScheme'; vars: []; type: TypeCon<'Int'> } };
       type VarExpr = { kind: 'Var'; name: 'x' };
       type Result = InferType<VarExpr, TestEnv>;
 
-      expectType<Result>().toEqual<[TypeCon<'Int'>, EmptySubst]>();
+      expectType<Result>().toEqual<[TypeCon<'Int'>, typeof EmptySubst]>();
       expect(true).toBe(true);
     });
 
@@ -44,7 +42,7 @@ describe('TypeType - InferType Function Tests', () => {
       type Result = InferType<IdentityExpr>;
 
       // Type level verification - generic function type
-      expectType<Result>().toMatch<[any, EmptySubst]>();
+      expectType<Result>().toMatch<[any, typeof EmptySubst]>();
       expect(true).toBe(true);
     });
 
@@ -60,7 +58,7 @@ describe('TypeType - InferType Function Tests', () => {
       };
       type Result = InferType<ConstExpr>;
 
-      expectType<Result>().toMatch<[any, EmptySubst]>();
+      expectType<Result>().toMatch<[any, typeof EmptySubst]>();
       expect(true).toBe(true);
     });
   });
@@ -77,7 +75,7 @@ describe('TypeType - InferType Function Tests', () => {
         };
         arg: { kind: 'Var'; name: 'y' };
       };
-      type TestEnv = { y: TypeCon<'Int'> };
+      type TestEnv = { y: { kind: 'TypeScheme'; vars: []; type: TypeCon<'Int'> } };
       type Result = InferType<AppExpr, TestEnv>;
 
       expectType<Result>().toMatch<[TypeCon<'Int'>, any]>();
@@ -160,7 +158,7 @@ describe('TypeType - InferType Function Tests', () => {
   describe('Type Unification Tests', () => {
     test('should unify identical types', () => {
       type Result = Unify<TypeCon<'Int'>, TypeCon<'Int'>>;
-      expectType<Result>().toEqual<EmptySubst>();
+      expectType<Result>().toEqual<typeof EmptySubst>();
       expect(true).toBe(true);
     });
 
@@ -191,7 +189,7 @@ describe('TypeType - InferType Function Tests', () => {
       };
       type Result = InferType<ChurchZero>;
 
-      expectType<Result>().toMatch<[any, EmptySubst]>();
+      expectType<Result>().toMatch<[any, typeof EmptySubst]>();
       expect(true).toBe(true);
     });
 
